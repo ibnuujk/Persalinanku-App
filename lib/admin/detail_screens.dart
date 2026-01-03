@@ -5,6 +5,8 @@ import '../models/user_model.dart';
 import '../models/persalinan_model.dart';
 import '../models/laporan_pasca_persalinan_model.dart';
 import '../models/keterangan_kelahiran_model.dart';
+import '../models/laporan_persalinan_model.dart';
+import '../services/pdf_service.dart';
 
 // Detail Screen for Delivery Registration
 class RegistrasiPersalinanDetailScreen extends StatelessWidget {
@@ -16,6 +18,80 @@ class RegistrasiPersalinanDetailScreen extends StatelessWidget {
     required this.data,
     required this.patient,
   });
+
+  Future<void> _downloadPDF(BuildContext context) async {
+    try {
+      // Show loading dialog
+      if (context.mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const Center(
+            child: Card(
+              child: Padding(
+                padding: EdgeInsets.all(20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 16),
+                    Text('Menyiapkan PDF...'),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      }
+
+      // Generate PDF
+      await PdfService.generateRegistrasiPersalinanPDF(
+        registrasi: data,
+        patient: patient,
+      );
+
+      // Close loading dialog
+      if (context.mounted) {
+        Navigator.pop(context);
+
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '✅ PDF berhasil disimpan di folder Downloads!',
+              style: GoogleFonts.poppins(),
+            ),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e) {
+      // Close loading dialog if still open
+      if (context.mounted) {
+        Navigator.pop(context);
+
+        // Show error message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Gagal membuat PDF: ${e.toString()}',
+              style: GoogleFonts.poppins(),
+            ),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+            action: SnackBarAction(
+              label: 'OK',
+              textColor: Colors.white,
+              onPressed: () {},
+            ),
+          ),
+        );
+      }
+
+      print('Error generating PDF: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -35,6 +111,32 @@ class RegistrasiPersalinanDetailScreen extends StatelessWidget {
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
+        actions: [
+          // Download PDF Button
+          Container(
+            margin: const EdgeInsets.only(right: 8, top: 8, bottom: 8),
+            child: ElevatedButton.icon(
+              onPressed: () => _downloadPDF(context),
+              icon: const Icon(Icons.download, size: 20),
+              label: Text(
+                'Download PDF',
+                style: GoogleFonts.poppins(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: const Color(0xFFEC407A),
+                elevation: 2,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              ),
+            ),
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
@@ -326,6 +428,310 @@ class RegistrasiPersalinanDetailScreen extends StatelessWidget {
   }
 }
 
+// Detail Screen for Delivery Report
+class LaporanPersalinanDetailScreen extends StatelessWidget {
+  final LaporanPersalinanModel data;
+  final UserModel patient;
+
+  const LaporanPersalinanDetailScreen({
+    super.key,
+    required this.data,
+    required this.patient,
+  });
+
+  Future<void> _downloadPDF(BuildContext context) async {
+    try {
+      // Show loading dialog
+      if (context.mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const Center(
+            child: Card(
+              child: Padding(
+                padding: EdgeInsets.all(20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 16),
+                    Text('Menyiapkan PDF...'),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      }
+
+      // Generate PDF
+      await PdfService.generateLaporanPersalinanPDF(
+        laporan: data,
+        patient: patient,
+      );
+
+      // Close loading dialog
+      if (context.mounted) {
+        Navigator.pop(context);
+
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '✅ PDF berhasil disimpan di folder Downloads!',
+              style: GoogleFonts.poppins(),
+            ),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e) {
+      // Close loading dialog if still open
+      if (context.mounted) {
+        Navigator.pop(context);
+
+        // Show error message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Gagal membuat PDF: ${e.toString()}',
+              style: GoogleFonts.poppins(),
+            ),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+            action: SnackBarAction(
+              label: 'OK',
+              textColor: Colors.white,
+              onPressed: () {},
+            ),
+          ),
+        );
+      }
+
+      print('Error generating PDF: $e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
+      appBar: AppBar(
+        title: Text(
+          'Detail Laporan Persalinan',
+          style: GoogleFonts.poppins(
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+          ),
+        ),
+        backgroundColor: const Color(0xFFEC407A),
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+        actions: [
+          // Download PDF Button
+          Container(
+            margin: const EdgeInsets.only(right: 8, top: 8, bottom: 8),
+            child: ElevatedButton.icon(
+              onPressed: () => _downloadPDF(context),
+              icon: const Icon(Icons.download, size: 20),
+              label: Text(
+                'Download PDF',
+                style: GoogleFonts.poppins(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: const Color(0xFFEC407A),
+                elevation: 2,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              ),
+            ),
+          ),
+        ],
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Patient Info Card
+            _buildPatientInfoCard(),
+            const SizedBox(height: 24),
+
+            // Report Details Card
+            _buildReportDetailsCard(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPatientInfoCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEC407A).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.person,
+                  color: Color(0xFFEC407A),
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Informasi Pasien',
+                      style: GoogleFonts.poppins(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF2D3748),
+                      ),
+                    ),
+                    Text(
+                      patient.nama,
+                      style: GoogleFonts.poppins(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFFEC407A),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _buildDetailRow('Umur', '${patient.umur} tahun'),
+          _buildDetailRow('No. HP', patient.noHp),
+          _buildDetailRow('Alamat', patient.alamat),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReportDetailsCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEC407A).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.assignment,
+                  color: Color(0xFFEC407A),
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Text(
+                'Laporan Persalinan',
+                style: GoogleFonts.poppins(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFF2D3748),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _buildDetailRow(
+            'Tanggal Masuk',
+            DateFormat('dd MMMM yyyy', 'id_ID').format(data.tanggalMasuk),
+          ),
+          _buildDetailRow('Catatan', data.catatan.isNotEmpty ? data.catatan : 'Tidak ada catatan'),
+          _buildDetailRow(
+            'Tanggal Dibuat',
+            DateFormat('dd MMMM yyyy HH:mm', 'id_ID').format(data.createdAt),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 140,
+            child: Text(
+              '$label:',
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey[600],
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                color: const Color(0xFF2D3748),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 // Detail Screen for Post-Delivery Report
 class LaporanPascaPersalinanDetailScreen extends StatelessWidget {
   final LaporanPascaPersalinanModel data;
@@ -336,6 +742,80 @@ class LaporanPascaPersalinanDetailScreen extends StatelessWidget {
     required this.data,
     required this.patient,
   });
+
+  Future<void> _downloadPDF(BuildContext context) async {
+    try {
+      // Show loading dialog
+      if (context.mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const Center(
+            child: Card(
+              child: Padding(
+                padding: EdgeInsets.all(20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 16),
+                    Text('Menyiapkan PDF...'),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      }
+
+      // Generate PDF
+      await PdfService.generateLaporanPascaPersalinanPDF(
+        laporan: data,
+        patient: patient,
+      );
+
+      // Close loading dialog
+      if (context.mounted) {
+        Navigator.pop(context);
+
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '✅ PDF berhasil disimpan di folder Downloads!',
+              style: GoogleFonts.poppins(),
+            ),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e) {
+      // Close loading dialog if still open
+      if (context.mounted) {
+        Navigator.pop(context);
+
+        // Show error message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Gagal membuat PDF: ${e.toString()}',
+              style: GoogleFonts.poppins(),
+            ),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+            action: SnackBarAction(
+              label: 'OK',
+              textColor: Colors.white,
+              onPressed: () {},
+            ),
+          ),
+        );
+      }
+
+      print('Error generating PDF: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -355,6 +835,32 @@ class LaporanPascaPersalinanDetailScreen extends StatelessWidget {
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
+        actions: [
+          // Download PDF Button
+          Container(
+            margin: const EdgeInsets.only(right: 8, top: 8, bottom: 8),
+            child: ElevatedButton.icon(
+              onPressed: () => _downloadPDF(context),
+              icon: const Icon(Icons.download, size: 20),
+              label: Text(
+                'Download PDF',
+                style: GoogleFonts.poppins(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: const Color(0xFFEC407A),
+                elevation: 2,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              ),
+            ),
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
@@ -596,7 +1102,7 @@ class LaporanPascaPersalinanDetailScreen extends StatelessWidget {
               ),
               const SizedBox(width: 16),
               Text(
-                'Perawatan Pasca Persalinan',
+                'Perawatan',
                 style: GoogleFonts.poppins(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -724,6 +1230,77 @@ class KeteranganKelahiranDetailScreen extends StatelessWidget {
     required this.patient,
   });
 
+  Future<void> _downloadPDF(BuildContext context) async {
+    try {
+      // Show loading dialog
+      if (context.mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const Center(
+            child: Card(
+              child: Padding(
+                padding: EdgeInsets.all(20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 16),
+                    Text('Menyiapkan PDF...'),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      }
+
+      // Generate PDF
+      await PdfService.generateKeteranganKelahiranPDF(data);
+
+      // Close loading dialog
+      if (context.mounted) {
+        Navigator.pop(context);
+
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '✅ PDF berhasil disimpan di folder Downloads!',
+              style: GoogleFonts.poppins(),
+            ),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e) {
+      // Close loading dialog if still open
+      if (context.mounted) {
+        Navigator.pop(context);
+
+        // Show error message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Gagal membuat PDF: ${e.toString()}',
+              style: GoogleFonts.poppins(),
+            ),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+            action: SnackBarAction(
+              label: 'OK',
+              textColor: Colors.white,
+              onPressed: () {},
+            ),
+          ),
+        );
+      }
+
+      print('Error generating PDF: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -742,6 +1319,32 @@ class KeteranganKelahiranDetailScreen extends StatelessWidget {
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
+        actions: [
+          // Download PDF Button
+          Container(
+            margin: const EdgeInsets.only(right: 8, top: 8, bottom: 8),
+            child: ElevatedButton.icon(
+              onPressed: () => _downloadPDF(context),
+              icon: const Icon(Icons.download, size: 20),
+              label: Text(
+                'Download PDF',
+                style: GoogleFonts.poppins(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: const Color(0xFFEC407A),
+                elevation: 2,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              ),
+            ),
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),

@@ -5,8 +5,12 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:open_file/open_file.dart';
 import '../models/user_model.dart';
 import '../models/keterangan_kelahiran_model.dart';
+import '../models/persalinan_model.dart';
+import '../models/laporan_persalinan_model.dart';
+import '../models/laporan_pasca_persalinan_model.dart';
 
 // Import for web platform (will be handled in code)
 
@@ -668,17 +672,8 @@ class PdfService {
 
     return pw.Container(
       child: pw.Row(
-        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+        mainAxisAlignment: pw.MainAxisAlignment.end,
         children: [
-          pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              pw.Text('Tanggal: $formattedDate'),
-              pw.SizedBox(height: 40),
-              pw.Text('(............................)'),
-              pw.Text('Pasien/Keluarga'),
-            ],
-          ),
           pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.center,
             children: [
@@ -766,46 +761,55 @@ class PdfService {
 
       Directory? directory;
 
-      // Try multiple directory options for mobile
-      try {
-        directory = await getApplicationDocumentsDirectory();
-      } catch (e) {
-        print('getApplicationDocumentsDirectory failed: $e');
+      // For Android: Try to save to Downloads folder
+      if (Platform.isAndroid) {
         try {
-          directory = await getTemporaryDirectory();
-        } catch (e2) {
-          print('getTemporaryDirectory failed: $e2');
+          // Try Download directory (Android 10+)
+          directory = Directory('/storage/emulated/0/Download');
 
-          // Last resort: try external storage directory (Android)
-          if (Platform.isAndroid) {
-            try {
-              directory = await getExternalStorageDirectory();
-            } catch (e3) {
-              print('getExternalStorageDirectory failed: $e3');
+          // Fallback for older Android or if Downloads not accessible
+          if (!directory.existsSync()) {
+            directory = await getExternalStorageDirectory();
+            if (directory != null) {
+              directory = Directory('${directory.path}/Download');
+              if (!directory.existsSync()) {
+                directory = await getApplicationDocumentsDirectory();
+              }
             }
           }
+        } catch (e) {
+          print('Android Downloads directory failed: $e');
+          // Final fallback
+          directory = await getApplicationDocumentsDirectory();
         }
+      } else {
+        // For iOS: Use app documents directory
+        directory = await getApplicationDocumentsDirectory();
       }
 
       if (directory == null) {
         throw Exception('Tidak dapat mengakses direktori penyimpanan');
       }
 
+      // Create directory if it doesn't exist
+      if (!directory.existsSync()) {
+        directory.createSync(recursive: true);
+      }
+
       final File file = File('${directory.path}/$fileName');
       await file.writeAsBytes(bytes);
 
-      // Share the file
-      await Share.shareXFiles(
-        [XFile(file.path)],
-        text: 'Riwayat Pemeriksaan Kehamilan - $patientName',
-        subject: 'Dokumen Riwayat Pemeriksaan',
-      );
+      print('PDF berhasil disimpan ke: ${file.path}');
 
-      print('PDF saved to: ${file.path}');
+      // Open the file automatically (optional)
+      final result = await OpenFile.open(file.path);
+      print('File opened: ${result.type}');
+
+      // Return success - no share popup!
     } catch (e) {
       print('Error saving PDF on mobile: $e');
 
-      // Fallback: try to share directly with bytes
+      // Fallback: try to share directly with bytes (only if save fails)
       try {
         final XFile file = XFile.fromData(
           bytes,
@@ -815,13 +819,13 @@ class PdfService {
 
         await Share.shareXFiles(
           [file],
-          text: 'Riwayat Pemeriksaan Kehamilan - $patientName',
-          subject: 'Dokumen Riwayat Pemeriksaan',
+          text: 'Dokumen - $patientName',
+          subject: 'Dokumen PDF',
         );
 
         print('PDF shared directly from memory');
       } catch (e2) {
-        throw Exception('Gagal menyimpan dan berbagi PDF: $e2');
+        throw Exception('Gagal menyimpan PDF: $e2');
       }
     }
   }
@@ -1060,17 +1064,8 @@ class PdfService {
 
     return pw.Container(
       child: pw.Row(
-        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+        mainAxisAlignment: pw.MainAxisAlignment.end,
         children: [
-          pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              pw.Text('Tanggal: $formattedDate'),
-              pw.SizedBox(height: 40),
-              pw.Text('(............................)'),
-              pw.Text('Pasien/Keluarga'),
-            ],
-          ),
           pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.center,
             children: [
@@ -1080,6 +1075,587 @@ class PdfService {
               pw.Text('Umiyatun S.ST'),
               pw.Text('NIP: 197505251997032001'),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ==================== REGISTRASI PERSALINAN PDF ====================
+  static Future<void> generateRegistrasiPersalinanPDF({
+    required PersalinanModel registrasi,
+    required UserModel patient,
+  }) async {
+    try {
+      final pdf = pw.Document();
+
+      pdf.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(20),
+          build: (pw.Context context) {
+            return [
+              _buildRegistrasiPersalinanHeader(),
+              pw.SizedBox(height: 20),
+              _buildRegistrasiPersalinanPatientInfo(patient),
+              pw.SizedBox(height: 20),
+              _buildRegistrasiPersalinanContent(registrasi),
+              pw.SizedBox(height: 20),
+              _buildRegistrasiPersalinanFooter(),
+            ];
+          },
+        ),
+      );
+
+      await _savePdf(pdf, 'Registrasi_Persalinan_${patient.nama}');
+    } catch (e) {
+      print('Error generating Registrasi Persalinan PDF: $e');
+      throw Exception('Gagal membuat PDF Registrasi Persalinan: $e');
+    }
+  }
+
+  static pw.Widget _buildRegistrasiPersalinanHeader() {
+    return pw.Container(
+      width: double.infinity,
+      child: pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.center,
+        children: [
+          pw.Text(
+            'BIDAN UMIYATUN S.ST',
+            style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold),
+            textAlign: pw.TextAlign.center,
+          ),
+          pw.SizedBox(height: 8),
+          pw.Text(
+            'Jl. Penatusan Gang Mutiara II RT 04 RW 03',
+            style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold),
+            textAlign: pw.TextAlign.center,
+          ),
+          pw.Text(
+            'Desa Jatisari - Kec. Kedungreja - Kab. Cilacap',
+            style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold),
+            textAlign: pw.TextAlign.center,
+          ),
+          pw.Text(
+            'No.Telp. 082323216060',
+            style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold),
+            textAlign: pw.TextAlign.center,
+          ),
+          pw.SizedBox(height: 15),
+          pw.Divider(thickness: 2),
+          pw.SizedBox(height: 15),
+          pw.Text(
+            'REGISTRASI PERSALINAN',
+            style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold),
+            textAlign: pw.TextAlign.center,
+          ),
+          pw.SizedBox(height: 20),
+        ],
+      ),
+    );
+  }
+
+  static pw.Widget _buildRegistrasiPersalinanPatientInfo(UserModel patient) {
+    final age = _calculateAge(patient.tanggalLahir);
+
+    return pw.Container(
+      child: pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.Text(
+            'DATA PASIEN:',
+            style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 14),
+          ),
+          pw.SizedBox(height: 10),
+          _buildRegistrasiRow('Nama', patient.nama),
+          _buildRegistrasiRow('Umur', '$age tahun'),
+          _buildRegistrasiRow('No. HP', patient.noHp),
+          _buildRegistrasiRow('Alamat', patient.alamat),
+          if (patient.agamaPasien != null && patient.agamaPasien!.isNotEmpty)
+            _buildRegistrasiRow('Agama', patient.agamaPasien!),
+          if (patient.pekerjaanPasien != null && patient.pekerjaanPasien!.isNotEmpty)
+            _buildRegistrasiRow('Pekerjaan', patient.pekerjaanPasien!),
+          pw.SizedBox(height: 15),
+        ],
+      ),
+    );
+  }
+
+  static pw.Widget _buildRegistrasiPersalinanContent(PersalinanModel registrasi) {
+    return pw.Container(
+      child: pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.Text(
+            'DATA PERSALINAN:',
+            style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 14),
+          ),
+          pw.SizedBox(height: 10),
+          _buildRegistrasiRow(
+            'Tanggal Masuk',
+            _formatDate(registrasi.tanggalMasuk),
+          ),
+          _buildRegistrasiRow('Fasilitas', registrasi.fasilitas.toUpperCase()),
+          _buildRegistrasiRow('Diagnosa Kebidanan', registrasi.diagnosaKebidanan),
+          _buildRegistrasiRow('Tindakan', registrasi.tindakan),
+          pw.SizedBox(height: 15),
+
+          // Data Suami
+          pw.Text(
+            'DATA SUAMI:',
+            style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 14),
+          ),
+          pw.SizedBox(height: 10),
+          _buildRegistrasiRow('Nama Suami', registrasi.namaSuami),
+          _buildRegistrasiRow('Umur Suami', '${registrasi.umurSuami} tahun'),
+          _buildRegistrasiRow('Pekerjaan Suami', registrasi.pekerjaanSuami),
+          _buildRegistrasiRow('Agama Suami', registrasi.agamaSuami),
+          pw.SizedBox(height: 15),
+
+          // Data Tambahan
+          pw.Text(
+            'INFORMASI TAMBAHAN:',
+            style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 14),
+          ),
+          pw.SizedBox(height: 10),
+          _buildRegistrasiRow(
+            'Penolong Persalinan',
+            registrasi.penolongPersalinan,
+          ),
+          _buildRegistrasiRow('Rujukan', registrasi.rujukan ?? 'Tidak ada'),
+          _buildRegistrasiRow(
+            'Tanggal Registrasi',
+            _formatDate(registrasi.createdAt),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static pw.Widget _buildRegistrasiPersalinanFooter() {
+    final now = DateTime.now();
+    final formattedDate = _formatDate(now);
+
+    return pw.Container(
+      child: pw.Row(
+        mainAxisAlignment: pw.MainAxisAlignment.end,
+        children: [
+          pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.center,
+            children: [
+              pw.Text('Cilacap, $formattedDate'),
+              pw.Text('Bidan'),
+              pw.SizedBox(height: 40),
+              pw.Text('Umiyatun S.ST'),
+              pw.Text('NIP: 197505251997032001'),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  static pw.Widget _buildRegistrasiRow(String label, String value) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.only(bottom: 8),
+      child: pw.Row(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.SizedBox(
+            width: 140,
+            child: pw.Text(
+              '$label:',
+              style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11),
+            ),
+          ),
+          pw.Expanded(
+            child: pw.Text(value, style: pw.TextStyle(fontSize: 11)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ==================== LAPORAN PERSALINAN PDF ====================
+  static Future<void> generateLaporanPersalinanPDF({
+    required LaporanPersalinanModel laporan,
+    required UserModel patient,
+  }) async {
+    try {
+      final pdf = pw.Document();
+
+      pdf.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(20),
+          build: (pw.Context context) {
+            return [
+              _buildLaporanPersalinanHeader(),
+              pw.SizedBox(height: 20),
+              _buildLaporanPersalinanPatientInfo(patient),
+              pw.SizedBox(height: 20),
+              _buildLaporanPersalinanContent(laporan),
+              pw.SizedBox(height: 20),
+              _buildLaporanPersalinanFooter(),
+            ];
+          },
+        ),
+      );
+
+      await _savePdf(pdf, 'Laporan_Persalinan_${patient.nama}');
+    } catch (e) {
+      print('Error generating Laporan Persalinan PDF: $e');
+      throw Exception('Gagal membuat PDF Laporan Persalinan: $e');
+    }
+  }
+
+  static pw.Widget _buildLaporanPersalinanHeader() {
+    return pw.Container(
+      width: double.infinity,
+      child: pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.center,
+        children: [
+          pw.Text(
+            'BIDAN UMIYATUN S.ST',
+            style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold),
+            textAlign: pw.TextAlign.center,
+          ),
+          pw.SizedBox(height: 8),
+          pw.Text(
+            'Jl. Penatusan Gang Mutiara II RT 04 RW 03',
+            style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold),
+            textAlign: pw.TextAlign.center,
+          ),
+          pw.Text(
+            'Desa Jatisari - Kec. Kedungreja - Kab. Cilacap',
+            style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold),
+            textAlign: pw.TextAlign.center,
+          ),
+          pw.Text(
+            'No.Telp. 082323216060',
+            style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold),
+            textAlign: pw.TextAlign.center,
+          ),
+          pw.SizedBox(height: 15),
+          pw.Divider(thickness: 2),
+          pw.SizedBox(height: 15),
+          pw.Text(
+            'LAPORAN PERSALINAN',
+            style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold),
+            textAlign: pw.TextAlign.center,
+          ),
+          pw.SizedBox(height: 20),
+        ],
+      ),
+    );
+  }
+
+  static pw.Widget _buildLaporanPersalinanPatientInfo(UserModel patient) {
+    final age = _calculateAge(patient.tanggalLahir);
+
+    return pw.Container(
+      child: pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.Text(
+            'DATA PASIEN:',
+            style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 14),
+          ),
+          pw.SizedBox(height: 10),
+          _buildLaporanRow('Nama', patient.nama),
+          _buildLaporanRow('Umur', '$age tahun'),
+          _buildLaporanRow('No. HP', patient.noHp),
+          _buildLaporanRow('Alamat', patient.alamat),
+          pw.SizedBox(height: 15),
+        ],
+      ),
+    );
+  }
+
+  static pw.Widget _buildLaporanPersalinanContent(LaporanPersalinanModel laporan) {
+    return pw.Container(
+      child: pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.Text(
+            'LAPORAN PERSALINAN:',
+            style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 14),
+          ),
+          pw.SizedBox(height: 10),
+          _buildLaporanRow(
+            'Tanggal Masuk',
+            _formatDate(laporan.tanggalMasuk),
+          ),
+          _buildLaporanRow('Catatan', laporan.catatan),
+          _buildLaporanRow(
+            'Tanggal Dibuat',
+            _formatDate(laporan.createdAt),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static pw.Widget _buildLaporanPersalinanFooter() {
+    final now = DateTime.now();
+    final formattedDate = _formatDate(now);
+
+    return pw.Container(
+      child: pw.Row(
+        mainAxisAlignment: pw.MainAxisAlignment.end,
+        children: [
+          pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.center,
+            children: [
+              pw.Text('Cilacap, $formattedDate'),
+              pw.Text('Bidan'),
+              pw.SizedBox(height: 40),
+              pw.Text('Umiyatun S.ST'),
+              pw.Text('NIP: 197505251997032001'),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  static pw.Widget _buildLaporanRow(String label, String value) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.only(bottom: 8),
+      child: pw.Row(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.SizedBox(
+            width: 140,
+            child: pw.Text(
+              '$label:',
+              style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11),
+            ),
+          ),
+          pw.Expanded(
+            child: pw.Text(value, style: pw.TextStyle(fontSize: 11)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ==================== LAPORAN PASCA PERSALINAN PDF ====================
+  static Future<void> generateLaporanPascaPersalinanPDF({
+    required LaporanPascaPersalinanModel laporan,
+    required UserModel patient,
+  }) async {
+    try {
+      final pdf = pw.Document();
+
+      pdf.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(20),
+          build: (pw.Context context) {
+            return [
+              _buildLaporanPascaPersalinanHeader(),
+              pw.SizedBox(height: 20),
+              _buildLaporanPascaPersalinanPatientInfo(patient),
+              pw.SizedBox(height: 20),
+              _buildLaporanPascaPersalinanContent(laporan),
+              pw.SizedBox(height: 20),
+              _buildLaporanPascaPersalinanFooter(),
+            ];
+          },
+        ),
+      );
+
+      await _savePdf(pdf, 'Laporan_Pasca_Persalinan_${patient.nama}');
+    } catch (e) {
+      print('Error generating Laporan Pasca Persalinan PDF: $e');
+      throw Exception('Gagal membuat PDF Laporan Pasca Persalinan: $e');
+    }
+  }
+
+  static pw.Widget _buildLaporanPascaPersalinanHeader() {
+    return pw.Container(
+      width: double.infinity,
+      child: pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.center,
+        children: [
+          pw.Text(
+            'BIDAN UMIYATUN S.ST',
+            style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold),
+            textAlign: pw.TextAlign.center,
+          ),
+          pw.SizedBox(height: 8),
+          pw.Text(
+            'Jl. Penatusan Gang Mutiara II RT 04 RW 03',
+            style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold),
+            textAlign: pw.TextAlign.center,
+          ),
+          pw.Text(
+            'Desa Jatisari - Kec. Kedungreja - Kab. Cilacap',
+            style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold),
+            textAlign: pw.TextAlign.center,
+          ),
+          pw.Text(
+            'No.Telp. 082323216060',
+            style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold),
+            textAlign: pw.TextAlign.center,
+          ),
+          pw.SizedBox(height: 15),
+          pw.Divider(thickness: 2),
+          pw.SizedBox(height: 15),
+          pw.Text(
+            'LAPORAN PASCA PERSALINAN',
+            style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold),
+            textAlign: pw.TextAlign.center,
+          ),
+          pw.SizedBox(height: 20),
+        ],
+      ),
+    );
+  }
+
+  static pw.Widget _buildLaporanPascaPersalinanPatientInfo(UserModel patient) {
+    final age = _calculateAge(patient.tanggalLahir);
+
+    return pw.Container(
+      child: pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.Text(
+            'DATA PASIEN:',
+            style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 14),
+          ),
+          pw.SizedBox(height: 10),
+          _buildLaporanPascaRow('Nama', patient.nama),
+          _buildLaporanPascaRow('Umur', '$age tahun'),
+          _buildLaporanPascaRow('No. HP', patient.noHp),
+          _buildLaporanPascaRow('Alamat', patient.alamat),
+          pw.SizedBox(height: 15),
+        ],
+      ),
+    );
+  }
+
+  static pw.Widget _buildLaporanPascaPersalinanContent(
+    LaporanPascaPersalinanModel laporan,
+  ) {
+    return pw.Container(
+      child: pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.Text(
+            'INFORMASI PULANG:',
+            style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 14),
+          ),
+          pw.SizedBox(height: 10),
+          _buildLaporanPascaRow(
+            'Tanggal Keluar',
+            _formatDate(laporan.tanggalKeluar),
+          ),
+          _buildLaporanPascaRow('Jam Keluar', laporan.jamKeluar),
+          _buildLaporanPascaRow('Kondisi Keluar', laporan.kondisiKeluar),
+          _buildLaporanPascaRow('Catatan Keluar', laporan.catatanKeluar),
+          pw.SizedBox(height: 15),
+
+          pw.Text(
+            'KONDISI KESEHATAN:',
+            style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 14),
+          ),
+          pw.SizedBox(height: 10),
+          _buildLaporanPascaRow('Tekanan Darah', laporan.tekananDarah),
+          _buildLaporanPascaRow('Suhu Badan', '${laporan.suhuBadan}°C'),
+          _buildLaporanPascaRow('Nadi', '${laporan.nadi} bpm'),
+          _buildLaporanPascaRow('Pernapasan', '${laporan.pernafasan} /menit'),
+          _buildLaporanPascaRow('Kontraksi', laporan.kontraksi),
+          pw.SizedBox(height: 15),
+
+          pw.Text(
+            'PERAWATAN PASCA PERSALINAN:',
+            style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 14),
+          ),
+          pw.SizedBox(height: 10),
+          _buildLaporanPascaRow('Pendarahan Kala III', laporan.pendarahanKalaIII),
+          _buildLaporanPascaRow('Pendarahan Kala IV', laporan.pendarahanKalaIV),
+          _buildLaporanPascaRow(
+            'Tanggal Fundus Uterus',
+            _formatDate(laporan.tanggalFundusUterus),
+          ),
+          pw.SizedBox(height: 15),
+
+          pw.Text(
+            'DATA BAYI:',
+            style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 14),
+          ),
+          pw.SizedBox(height: 10),
+          _buildLaporanPascaRow('Kelahiran Anak', laporan.kelahiranAnak),
+          _buildLaporanPascaRow('Jenis Kelamin', laporan.jenisKelamin),
+          _buildLaporanPascaRow('Berat Badan', '${laporan.beratBadan} gram'),
+          _buildLaporanPascaRow('Panjang Badan', '${laporan.panjangBadan} cm'),
+          _buildLaporanPascaRow('Lingkar Kepala', '${laporan.lingkarKepala} cm'),
+          _buildLaporanPascaRow('Lingkar Dada', '${laporan.lingkarDada} cm'),
+          pw.SizedBox(height: 15),
+
+          pw.Text(
+            'SKOR APGAR:',
+            style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 14),
+          ),
+          pw.SizedBox(height: 10),
+          _buildLaporanPascaRow('APGAR Skor', laporan.apgarSkor),
+          _buildLaporanPascaRow('APGAR Catatan', laporan.apgarCatatan),
+          pw.SizedBox(height: 15),
+
+          pw.Text(
+            'INFORMASI TAMBAHAN:',
+            style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 14),
+          ),
+          pw.SizedBox(height: 10),
+          _buildLaporanPascaRow(
+            'Tanggal Dibuat',
+            _formatDate(laporan.createdAt),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static pw.Widget _buildLaporanPascaPersalinanFooter() {
+    final now = DateTime.now();
+    final formattedDate = _formatDate(now);
+
+    return pw.Container(
+      child: pw.Row(
+        mainAxisAlignment: pw.MainAxisAlignment.end,
+        children: [
+          pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.center,
+            children: [
+              pw.Text('Cilacap, $formattedDate'),
+              pw.Text('Bidan'),
+              pw.SizedBox(height: 40),
+              pw.Text('Umiyatun S.ST'),
+              pw.Text('NIP: 197505251997032001'),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  static pw.Widget _buildLaporanPascaRow(String label, String value) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.only(bottom: 8),
+      child: pw.Row(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.SizedBox(
+            width: 150,
+            child: pw.Text(
+              '$label:',
+              style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11),
+            ),
+          ),
+          pw.Expanded(
+            child: pw.Text(value, style: pw.TextStyle(fontSize: 11)),
           ),
         ],
       ),
