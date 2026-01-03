@@ -467,6 +467,19 @@ class _KeteranganKelahiranScreenState extends State<KeteranganKelahiranScreen> {
         'Keterangan kelahiran saved: id=${keterangan.id}, pasienId=${keterangan.pasienId}, laporanPascaPersalinanId=${keterangan.laporanPascaPersalinanId}, kelahiranAnakKe=${keterangan.kelahiranAnakKe}',
       );
 
+      // Update pregnancy status to 'completed' automatically after saving keterangan kelahiran
+      await _firebaseService.updatePregnancyStatus(
+        keterangan.pasienId,
+        'completed',
+        'birth',
+        'Persalinan selesai, keterangan kelahiran telah dibuat',
+        _hariTanggalLahir,
+      );
+
+      print(
+        'Pregnancy status updated to completed for pasienId: ${keterangan.pasienId}',
+      );
+
       // Clear form
       _clearForm();
 
@@ -474,14 +487,16 @@ class _KeteranganKelahiranScreenState extends State<KeteranganKelahiranScreen> {
         // Show success alert
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Keterangan kelahiran berhasil disimpan'),
+            content: Text(
+              '✅ Keterangan kelahiran berhasil disimpan\nStatus kehamilan diperbarui menjadi "Selesai"',
+            ),
             backgroundColor: Colors.green,
-            duration: Duration(seconds: 2),
+            duration: Duration(seconds: 3),
           ),
         );
 
-        // Wait for 2 seconds then navigate back
-        Future.delayed(const Duration(seconds: 2), () {
+        // Wait for 3 seconds then navigate back
+        Future.delayed(const Duration(seconds: 3), () {
           if (mounted) {
             // Pop back to previous screen instead of going to home
             if (Navigator.canPop(context)) {

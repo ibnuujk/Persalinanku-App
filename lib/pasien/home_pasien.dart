@@ -471,13 +471,21 @@ class _HomePasienScreenState extends State<HomePasienScreen>
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  widget.user.hpht != null && _gestationalAgeWeeks != null
-                      ? 'Minggu $_gestationalAgeWeeks Kehamilan'
-                      : 'Minggu 0 Kehamilan',
+                  widget.user.pregnancyStatus == 'completed'
+                      ? 'Kehamilan Telah Selesai'
+                      : (widget.user.pregnancyStatus == 'miscarriage'
+                          ? 'Kehamilan Berakhir'
+                          : (widget.user.hpht != null && _gestationalAgeWeeks != null
+                              ? 'Minggu $_gestationalAgeWeeks Kehamilan'
+                              : 'Minggu 0 Kehamilan')),
                   style: GoogleFonts.poppins(
                     fontSize: 20,
                     fontWeight: FontWeight.w700,
-                    color: const Color(0xFF2D3748),
+                    color: widget.user.pregnancyStatus == 'completed'
+                        ? const Color(0xFF10B981)
+                        : (widget.user.pregnancyStatus == 'miscarriage'
+                            ? const Color(0xFFE53E3E)
+                            : const Color(0xFF2D3748)),
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -502,182 +510,185 @@ class _HomePasienScreenState extends State<HomePasienScreen>
                 const SizedBox(height: 30),
 
                 // Enhanced Fetal Information Card
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.1),
-                        blurRadius: 15,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Top Section with Icon and Description
-                      Row(
-                        children: [
-                          Container(
-                            child: Padding(
-                              padding: const EdgeInsets.all(8),
-                              child: Image.asset(
-                                'assets/icons/newborn.png',
-                                width: 65,
-                                height: 65,
+                // Only show if pregnancy is NOT completed
+                if (widget.user.pregnancyStatus != 'completed') ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.1),
+                          blurRadius: 15,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Top Section with Icon and Description
+                        Row(
+                          children: [
+                            Container(
+                              child: Padding(
+                                padding: const EdgeInsets.all(8),
+                                child: Image.asset(
+                                  'assets/icons/newborn.png',
+                                  width: 65,
+                                  height: 65,
+                                ),
                               ),
                             ),
+                            const SizedBox(width: 20),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    widget.user.pregnancyStatus == 'miscarriage'
+                                        ? 'Status Kehamilan: Keguguran'
+                                        : (widget.user.hpht != null &&
+                                                _fetalSize != null
+                                            ? 'Bayimu sekarang $_fetalSize'
+                                            : 'Belum ada data HPHT'),
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color:
+                                          widget.user.pregnancyStatus ==
+                                                  'miscarriage'
+                                              ? const Color(0xFFE53E3E)
+                                              : const Color(0xFF2D3748),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (widget.user.hpht != null &&
+                            _gestationalAgeWeeks != null &&
+                            widget.user.pregnancyStatus != 'miscarriage') ...[
+                          const SizedBox(height: 24),
+                          // Bottom Section with 3 columns
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildFetalInfoColumn(
+                                  'Panjang Bayi',
+                                  '${_fetalLength?.toStringAsFixed(1) ?? '0.0'} cm',
+                                ),
+                              ),
+                              Expanded(
+                                child: _buildFetalInfoColumn(
+                                  'Berat Bayi',
+                                  '${_fetalWeight?.toStringAsFixed(0) ?? '0'} gr',
+                                ),
+                              ),
+                              Expanded(
+                                child: _buildFetalInfoColumn(
+                                  'Prakiraan Lahir',
+                                  _formatDate(_estimatedDueDate!),
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 20),
-                          Expanded(
+                        ] else ...[
+                          const SizedBox(height: 20),
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: const Color(
+                                0xFFFFCDD2,
+                              ).withValues(alpha: 0.3),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: const Color(
+                                  0xFFEC407A,
+                                ).withValues(alpha: 0.2),
+                                width: 1,
+                              ),
+                            ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.info_rounded,
+                                      color: const Color(0xFFEC407A),
+                                      size: 18,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      'Data HPHT Belum Tersedia',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: const Color(0xFF2D3748),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                                 const SizedBox(height: 8),
                                 Text(
-                                  widget.user.pregnancyStatus == 'miscarriage'
-                                      ? 'Status Kehamilan: Keguguran'
-                                      : (widget.user.hpht != null &&
-                                              _fetalSize != null
-                                          ? 'Bayimu sekarang $_fetalSize'
-                                          : 'Belum ada data HPHT'),
+                                  'Untuk melihat informasi janin yang lengkap, silakan isi data HPHT di fitur Kehamilanku.',
                                   style: GoogleFonts.poppins(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                    color:
-                                        widget.user.pregnancyStatus ==
-                                                'miscarriage'
-                                            ? const Color(0xFFE53E3E)
-                                            : const Color(0xFF2D3748),
+                                    fontSize: 12,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                GestureDetector(
+                                  onTap: () {
+                                    RouteHelper.navigateToHPHTForm(
+                                      context,
+                                      widget.user,
+                                    );
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 6,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFEC407A),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          Icons.add_rounded,
+                                          color: Colors.white,
+                                          size: 16,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          'Isi HPHT',
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w500,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ],
                             ),
                           ),
                         ],
-                      ),
-                      if (widget.user.hpht != null &&
-                          _gestationalAgeWeeks != null &&
-                          widget.user.pregnancyStatus != 'miscarriage') ...[
-                        const SizedBox(height: 24),
-                        // Bottom Section with 3 columns
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _buildFetalInfoColumn(
-                                'Panjang Bayi',
-                                '${_fetalLength?.toStringAsFixed(1) ?? '0.0'} cm',
-                              ),
-                            ),
-                            Expanded(
-                              child: _buildFetalInfoColumn(
-                                'Berat Bayi',
-                                '${_fetalWeight?.toStringAsFixed(0) ?? '0'} gr',
-                              ),
-                            ),
-                            Expanded(
-                              child: _buildFetalInfoColumn(
-                                'Prakiraan Lahir',
-                                _formatDate(_estimatedDueDate!),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ] else ...[
-                        const SizedBox(height: 20),
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: const Color(
-                              0xFFFFCDD2,
-                            ).withValues(alpha: 0.3),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: const Color(
-                                0xFFEC407A,
-                              ).withValues(alpha: 0.2),
-                              width: 1,
-                            ),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Icon(
-                                    Icons.info_rounded,
-                                    color: const Color(0xFFEC407A),
-                                    size: 18,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'Data HPHT Belum Tersedia',
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      color: const Color(0xFF2D3748),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                'Untuk melihat informasi janin yang lengkap, silakan isi data HPHT di fitur Kehamilanku.',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 12,
-                                  color: Colors.grey[600],
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              GestureDetector(
-                                onTap: () {
-                                  RouteHelper.navigateToHPHTForm(
-                                    context,
-                                    widget.user,
-                                  );
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 6,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFEC407A),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        Icons.add_rounded,
-                                        color: Colors.white,
-                                        size: 16,
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        'Isi HPHT',
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
                       ],
-                    ],
+                    ),
                   ),
-                ),
-                const SizedBox(height: 32),
+                  const SizedBox(height: 32),
+                ],
 
                 const SizedBox(height: 16),
                 GridView.count(

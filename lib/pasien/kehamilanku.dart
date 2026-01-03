@@ -396,8 +396,273 @@ class _KehamilankuScreenState extends State<KehamilankuScreen>
   }
 
   Widget _buildContentWithUserData(UserModel user) {
+    // If pregnancy is completed, show completion message instead of pregnancy info
+    if (user.pregnancyStatus == 'completed') {
+      return _buildPregnancyCompletedContent(user);
+    }
     // This will be the same as _buildContent but using the user parameter
     return _buildContent(user);
+  }
+
+  Widget _buildPregnancyCompletedContent(UserModel user) {
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 24),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.1),
+                    blurRadius: 15,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF10B981).withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(40),
+                    ),
+                    child: const Icon(
+                      Icons.check_circle_rounded,
+                      color: Color(0xFF10B981),
+                      size: 50,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    'Selamat!',
+                    style: GoogleFonts.poppins(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF10B981),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Kehamilan Anda Telah Selesai',
+                    style: GoogleFonts.poppins(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF2D3748),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Semoga Anda dan bayi Anda sehat selalu.',
+                    style: GoogleFonts.poppins(
+                      fontSize: 16,
+                      color: Colors.grey[600],
+                      height: 1.5,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 24),
+                  if (user.pregnancyEndDate != null) ...[
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF0FDF4),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: const Color(0xFF10B981).withValues(alpha: 0.3),
+                          width: 1,
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          Text(
+                            'Tanggal Kelahiran',
+                            style: GoogleFonts.poppins(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            _formatDate(user.pregnancyEndDate!),
+                            style: GoogleFonts.poppins(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                              color: const Color(0xFF10B981),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEC407A).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: const Color(0xFFEC407A).withValues(alpha: 0.3),
+                  width: 1,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.info_rounded,
+                        color: const Color(0xFFEC407A),
+                        size: 24,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'Informasi Penting',
+                          style: GoogleFonts.poppins(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF2D3748),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Jika Anda ingin hamil kembali, silakan hubungi bidan untuk konsultasi kapan waktu yang tepat untuk membuat kehamilan baru.',
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      color: const Color(0xFF2D3748),
+                      height: 1.4,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 32),
+            // Recovery Tips
+            Text(
+              'Tips Pemulihan Pasca Persalinan',
+              style: GoogleFonts.poppins(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF2D3748),
+              ),
+            ),
+            const SizedBox(height: 16),
+            _buildPostpartumTips(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPostpartumTips() {
+    List<Map<String, dynamic>> tips = [
+      {
+        'title': 'Istirahat Cukup',
+        'description':
+            'Berikan waktu tubuh Anda untuk pulih, tidur saat bayi tidur',
+        'icon': Icons.bedtime_rounded,
+        'color': Colors.purple,
+      },
+      {
+        'title': 'Nutrisi Seimbang',
+        'description':
+            'Konsumsi makanan bergizi untuk pemulihan dan ASI yang baik',
+        'icon': Icons.restaurant_rounded,
+        'color': Colors.green,
+      },
+      {
+        'title': 'Perhatikan Tanda Bahaya',
+        'description':
+            'Segera hubungi bidan jika ada pendarahan berlebih atau demam',
+        'icon': Icons.warning_rounded,
+        'color': Colors.red,
+      },
+      {
+        'title': 'Kontrol Rutin',
+        'description':
+            'Lakukan pemeriksaan pasca persalinan sesuai jadwal',
+        'icon': Icons.medical_services_rounded,
+        'color': const Color(0xFFEC407A),
+      },
+    ];
+
+    return Column(
+      children: tips.map((tip) => Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 50,
+              height: 50,
+              decoration: BoxDecoration(
+                color: tip['color'].withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(25),
+              ),
+              child: Icon(
+                tip['icon'],
+                color: tip['color'],
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    tip['title'],
+                    style: GoogleFonts.poppins(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF2D3748),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    tip['description'],
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      color: Colors.grey[600],
+                      height: 1.4,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      )).toList(),
+    );
   }
 
   Widget _buildNoDataContent() {
